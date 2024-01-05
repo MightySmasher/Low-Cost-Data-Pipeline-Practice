@@ -90,7 +90,7 @@ def get_daily_data():
         # Transform
         try:
             new_records = pd.DataFrame(response['protocols'])
-            new_records['timestamp'] = datetime.datetime.today().astimezone(datetime.timezone.utc).strftime('%Y-%m-%d')
+            new_records['timestamp'] = (datetime.datetime.today().astimezone(datetime.timezone.utc) - datetime.timedelta(days=1)).strftime('%Y-%m-%d')
             new_records['chain'] = i
             new_records.rename(columns={'dailyFees':'fees'}, inplace=True)
             new_records = new_records[['timestamp','defillamaId','displayName','module','category','protocolType','chain','fees']]
@@ -113,22 +113,21 @@ def get_data():
     
     # If yes. Check if the data is up to date
     try:
-        current_date = datetime.datetime.now().astimezone(datetime.timezone.utc)
-        last_updated = datetime.datetime.strptime(max(df.timestamp), '%Y-%m-%d').replace(tzinfo=datetime.timezone.utc)
+        current_date = datetime.datetime.today().astimezone(datetime.timezone.utc).strftime('%Y-%m-%d')
+        last_updated = max(df.timestamp)
         
         date_diff = pd.to_datetime(current_date) - pd.to_datetime(last_updated)
-        date_diff = date_diff.days
+        n_diff = date_diff.days
 
-        print("current date : "+str(current_date))
-        print("last updated : "+last_updated)
+        print(f"current_date={current_date}, last_transaction={last_updated}, timedelta={n_diff} days")
     
     # If up to date
-        if date_diff <= 1:
+        if n_diff <= 1:
             print('file has already up to date!! please waiting for DefiLlama to update at 00.00UTC')
             pass
     
     # If not up to date. Daily update
-        elif date_diff == 2:
+        elif n_diff == 2:
             
             print('updating...daily data')
             daily_data = get_daily_data()
@@ -138,8 +137,8 @@ def get_data():
             return daily_updated     
 
     # If not up to date with missing update    
-        elif date_diff > 2:
-            print(f'missing more than {date_diff} days')
+        elif n_diff > 2:
+            print(f'missing more than {n_diff} days')
             his_data = get_historical_data()
             missing_data = his_data[his_data['timestamp'] > last_updated]
 
@@ -167,7 +166,7 @@ def upload_blob():
     try:
         # get data from destination api
         api_data = get_data()
-
+    
         # Upload file (when .to_csv(index=False, encoding='utf-8') the datatype become string)
         source_file_name = api_data.to_csv(index=False, encoding='utf-8')
         
